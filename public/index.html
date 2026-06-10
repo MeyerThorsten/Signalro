@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PacketRush — Packet Highway</title>
+  <style>
+    :root {
+      --bg: #0b1020;
+      --panel: rgba(13, 19, 38, 0.82);
+      --border: rgba(96, 130, 200, 0.25);
+      --text: #dbe4ff;
+      --dim: #8194c4;
+      --green: #4ade80;
+      --amber: #fbbf24;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { height: 100%; overflow: hidden; background: var(--bg); }
+    body {
+      font-family: "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+      color: var(--text);
+    }
+    canvas { display: block; }
+
+    .panel {
+      position: fixed;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      backdrop-filter: blur(8px);
+      padding: 12px 16px;
+      z-index: 10;
+    }
+
+    #hud {
+      top: 16px;
+      left: 16px;
+      width: 238px;
+    }
+    #hud .hint { overflow-wrap: break-word; }
+    #hud h1 {
+      font-size: 13px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--dim);
+      margin-bottom: 8px;
+    }
+    #status {
+      font-size: 12px;
+      margin-bottom: 10px;
+    }
+    #status .dot { font-size: 10px; }
+    #status.live .dot, #status.live .label { color: var(--green); }
+    #status.demo .dot, #status.demo .label { color: var(--amber); }
+    #status .hint {
+      display: block;
+      color: var(--dim);
+      font-size: 10px;
+      margin-top: 4px;
+      line-height: 1.5;
+    }
+    .stat-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      padding: 2px 0;
+    }
+    .stat-row .k { color: var(--dim); }
+    .stat-row .v { font-variant-numeric: tabular-nums; }
+
+    #spark-caption {
+      display: flex;
+      gap: 12px;
+      font-size: 9px;
+      color: var(--dim);
+      margin-top: 8px;
+      align-items: center;
+    }
+    #spark-caption .sw {
+      display: inline-block;
+      width: 7px;
+      height: 7px;
+      border-radius: 2px;
+      margin-right: 4px;
+      vertical-align: -1px;
+    }
+    #spark-caption .window { margin-left: auto; }
+    #spark {
+      display: block;
+      width: 206px;
+      height: 38px;
+      margin-top: 4px;
+    }
+
+    #controls {
+      top: 16px;
+      right: 16px;
+      display: flex;
+      gap: 8px;
+      padding: 8px;
+    }
+    #controls button {
+      font: inherit;
+      font-size: 11px;
+      color: var(--text);
+      background: rgba(40, 56, 96, 0.6);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 6px 12px;
+      cursor: pointer;
+    }
+    #controls button:hover { background: rgba(64, 88, 148, 0.7); }
+    #controls select {
+      font: inherit;
+      font-size: 11px;
+      color: var(--text);
+      background: rgba(40, 56, 96, 0.6);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 6px 8px;
+      cursor: pointer;
+    }
+    #controls select:hover { background: rgba(64, 88, 148, 0.7); }
+    #controls button.active { background: rgba(74, 222, 128, 0.18); border-color: rgba(74, 222, 128, 0.5); }
+
+    #legend {
+      bottom: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 6px 14px;
+      max-width: 92vw;
+      padding: 10px 18px;
+    }
+    .chip {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      white-space: nowrap;
+      cursor: pointer;
+      user-select: none;
+      border-radius: 5px;
+      padding: 2px 5px;
+      margin: -2px -5px;
+    }
+    .chip:hover { background: rgba(64, 88, 148, 0.35); }
+    .chip.muted { opacity: 0.32; }
+    .chip.muted .swatch { filter: grayscale(1); }
+    .chip .swatch {
+      width: 10px;
+      height: 10px;
+      border-radius: 3px;
+      flex: none;
+    }
+    .chip .vehicle { color: var(--dim); }
+
+    #tooltip {
+      position: fixed;
+      display: none;
+      pointer-events: none;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      backdrop-filter: blur(8px);
+      padding: 8px 12px;
+      font-size: 11px;
+      line-height: 1.7;
+      z-index: 20;
+      white-space: nowrap;
+    }
+    #tooltip .proto { font-weight: bold; letter-spacing: 1px; }
+    #tooltip .dim { color: var(--dim); }
+  </style>
+</head>
+<body>
+  <div id="hud" class="panel">
+    <h1>PacketRush</h1>
+    <div id="status" class="demo">
+      <span class="dot">●</span> <span class="label">CONNECTING…</span>
+      <span class="hint"></span>
+    </div>
+    <div class="stat-row"><span class="k">▲ outbound</span><span class="v" id="pps-out">0 pkt/s</span></div>
+    <div class="stat-row"><span class="k">▼ inbound</span><span class="v" id="pps-in">0 pkt/s</span></div>
+    <div class="stat-row"><span class="k">bandwidth</span><span class="v" id="bps">0 KB/s</span></div>
+    <div class="stat-row"><span class="k">vehicles</span><span class="v" id="vehicles">0</span></div>
+    <div id="spark-caption">
+      <span><span class="sw" style="background:#7dd3fc"></span>pkt/s</span>
+      <span><span class="sw" style="background:#fbbf24"></span>KB/s</span>
+      <span class="window">last 60s</span>
+    </div>
+    <canvas id="spark" width="412" height="76"></canvas>
+  </div>
+
+  <div id="controls" class="panel">
+    <select id="theme" title="scene theme"></select>
+    <button id="btn-pause">⏸ pause</button>
+    <button id="btn-demo">demo traffic</button>
+    <button id="btn-sound" title="engine hum follows traffic intensity">🔇 sound</button>
+  </div>
+
+  <div id="legend" class="panel"></div>
+  <div id="tooltip"></div>
+
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+    }
+  }
+  </script>
+  <script type="module" src="main.js"></script>
+</body>
+</html>

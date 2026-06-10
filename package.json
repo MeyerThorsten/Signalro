@@ -1,0 +1,39 @@
+{
+  "name": "packetrush",
+  "version": "1.0.0",
+  "description": "3D network traffic visualizer — every packet becomes a vehicle on a night highway, rendered live with Three.js",
+  "main": "server.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test",
+    "check": "node --check server.js && node --input-type=module --check < public/main.js && node --input-type=module --check < public/vehicles.js && node --input-type=module --check < public/themes.js && node --input-type=module --check < public/fleets.js"
+  },
+  "keywords": [
+    "network",
+    "visualization",
+    "tcpdump",
+    "packet-capture",
+    "three.js",
+    "webgl",
+    "websocket",
+    "3d",
+    "network-monitoring"
+  ],
+  "homepage": "https://github.com/MeyerThorsten/PacketRush#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MeyerThorsten/PacketRush.git"
+  },
+  "bugs": {
+    "url": "https://github.com/MeyerThorsten/PacketRush/issues"
+  },
+  "author": "Thorsten Meyer",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  }
+}

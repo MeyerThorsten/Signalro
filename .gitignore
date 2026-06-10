@@ -1,0 +1,13 @@
+# Dependencies
+node_modules/
+
+# here.now publish state & credentials (never commit)
+.herenow/
+
+# Logs & OS cruft
+*.log
+.DS_Store
+
+# Editor
+.vscode/
+.idea/
