@@ -4,6 +4,16 @@
   "description": "3D network traffic visualizer — every packet becomes a vehicle on a night highway, rendered live with Three.js",
   "main": "server.js",
   "type": "commonjs",
+  "bin": {
+    "signalro": "bin/signalro.js"
+  },
+  "files": [
+    "server.js",
+    "bin/",
+    "public/",
+    "scripts/",
+    "DOCUMENTATION.md"
+  ],
   "scripts": {
     "start": "node server.js",
     "test": "node --test",

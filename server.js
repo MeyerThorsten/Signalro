@@ -11,9 +11,15 @@ const dns = require('dns');
 const { WebSocketServer } = require('ws');
 
 const PORT = Number(process.env.PORT) || 8090;
+const HOST = process.env.HOST || '0.0.0.0';          // bind address (remote capture)
+const TOKEN = process.env.SIGNALRO_TOKEN || null;    // shared-token gate for the WS stream
 const PUBLIC_DIR = path.join(__dirname, 'public');
 const BATCH_INTERVAL_MS = 100;
 const MAX_PACKETS_PER_BATCH = 80;
+// Capture binary: tcpdump everywhere; Windows uses WinDump/tcpdump from npcap.
+const CAPTURE_BIN = process.platform === 'win32' ? (process.env.CAPTURE_BIN || 'windump') : 'tcpdump';
+const PCAP_FILE = path.join(os.tmpdir(), 'signalro-capture.pcap');
+const PCAP_MAX_BYTES = 20 << 20;                     // restart the rolling pcap past 20 MB
 
 const MIME = {
   '.html': 'text/html; charset=utf-8',
@@ -54,6 +60,11 @@ function parseIpRouteOutput(out) {
 
 function detectInterface() {
   if (process.env.IFACE) return process.env.IFACE;
+  if (process.platform === 'win32') {
+    // npcap devices are addressed by index with WinDump/tcpdump; pick the first.
+    // Users can set IFACE to a specific index from `windump -D` (see README).
+    return '1';
+  }
   if (process.platform === 'darwin') {
     try {
       const iface = parseRouteGetOutput(
@@ -314,7 +325,7 @@ function startSniCapture(spawnFn = spawn) {
   const filter = 'tcp port 443 and (tcp[((tcp[12]&0xf0)>>2)]=22)';
   let td;
   try {
-    td = spawnFn('tcpdump', ['-i', IFACE, '-n', '-l', '-s', '0', '-x', filter]);
+    td = spawnFn(CAPTURE_BIN, ['-i', IFACE, '-n', '-l', '-s', '0', '-x', filter]);
   } catch (_) { return null; }
   sniTcpdump = td;
   let cur = null;           // { dstHost } for the packet being assembled
@@ -420,10 +431,54 @@ function attachApp(pkt) {
 }
 
 // ---------------------------------------------------------------------------
+// Rolling PCAP capture for export: a packet-buffered tcpdump writes a real
+// .pcap the UI can download (Wireshark-openable). Best-effort; bounded by size.
+// ---------------------------------------------------------------------------
+let pcapProc = null;
+function startPcapCapture(spawnFn = spawn) {
+  try {
+    pcapProc = spawnFn(CAPTURE_BIN, ['-i', IFACE, '-n', '-U', '-w', PCAP_FILE]);
+    if (pcapProc.on) {
+      pcapProc.on('error', () => { pcapProc = null; });
+      pcapProc.on('exit', () => { pcapProc = null; });
+    }
+  } catch (_) { pcapProc = null; }
+}
+function servePcap(res) {
+  fs.stat(PCAP_FILE, (err, st) => {
+    if (err || !st.size) {
+      res.writeHead(503, { 'content-type': 'text/plain' });
+      return res.end('No capture available yet — run Signalro with capture privileges (sudo).');
+    }
+    res.writeHead(200, {
+      'content-type': 'application/vnd.tcpdump.pcap',
+      'content-disposition': 'attachment; filename="signalro-capture.pcap"',
+    });
+    fs.createReadStream(PCAP_FILE).pipe(res);
+  });
+}
+setInterval(() => {
+  fs.stat(PCAP_FILE, (err, st) => {
+    if (!err && st.size > PCAP_MAX_BYTES && pcapProc) {
+      pcapProc.kill('SIGTERM');
+      setTimeout(() => startPcapCapture(), 600);
+    }
+  });
+}, 30000).unref();
+
+// Extract the `token` query parameter from a raw request URL.
+function tokenOf(url) {
+  const i = (url || '').indexOf('token=');
+  if (i < 0) return null;
+  return decodeURIComponent(url.slice(i + 6).split('&')[0]);
+}
+
+// ---------------------------------------------------------------------------
 // HTTP + WebSocket server
 // ---------------------------------------------------------------------------
 const server = http.createServer((req, res) => {
   let urlPath = decodeURIComponent(req.url.split('?')[0]);
+  if (urlPath === '/export/signalro.pcap') return servePcap(res);
   if (urlPath === '/') urlPath = '/index.html';
   const filePath = path.join(PUBLIC_DIR, path.normalize(urlPath));
   if (!filePath.startsWith(PUBLIC_DIR)) {
@@ -451,7 +506,8 @@ function broadcast(obj) {
   }
 }
 
-wss.on('connection', (ws) => {
+wss.on('connection', (ws, req) => {
+  if (TOKEN && tokenOf(req && req.url) !== TOKEN) { ws.close(1008, 'unauthorized'); return; }
   ws.send(JSON.stringify({ type: 'status', ...captureState }));
   const names = knownNames();
   if (Object.keys(names).length > 0) {
@@ -483,7 +539,7 @@ setInterval(refreshAppMap, 3000).unref();
 
 function startCapture() {
   const args = ['-i', IFACE, '-n', '-q', '-l', '-t', '-U'];
-  const tcpdump = spawn('tcpdump', args);
+  const tcpdump = spawn(CAPTURE_BIN, args);
   let stderrBuf = '';
   let gotPackets = false;
 
@@ -551,13 +607,18 @@ module.exports = {
   requestRdns, rdnsCache, knownNames,
   extractSNI, hexLinesToBuffer, startSniCapture, noteSni,
   parseLsof, parseSs, refreshAppMap, attachApp,
+  startPcapCapture, servePcap, tokenOf,
   _setRdnsResolver: (fn) => { rdnsResolve = fn; },
   _rdnsStats: () => ({ active: rdnsActive, queued: rdnsQueue.length }),
 };
 
-if (require.main === module) server.listen(PORT, () => {
+function start() {
+  return server.listen(PORT, HOST, () => {
   console.log(`Signalro running at http://localhost:${PORT}`);
   console.log(`Capturing on interface ${IFACE} (override with IFACE=enX)`);
+  if (HOST !== '127.0.0.1' && HOST !== 'localhost') {
+    console.log(`Bound to ${HOST}:${PORT}${TOKEN ? ' — token required for the live stream' : ' — set SIGNALRO_TOKEN to gate remote access'}`);
+  }
   if (process.getuid && process.getuid() !== 0) {
     if (process.platform === 'linux') {
       console.log('Note: live capture needs privileges. Run `sudo npm start`, or grant tcpdump');
@@ -569,5 +630,10 @@ if (require.main === module) server.listen(PORT, () => {
   }
   refreshAppMap();
   startCapture();
-  startSniCapture(); // best-effort; silently no-ops without capture privileges
-});
+  startSniCapture();  // best-effort; silently no-ops without capture privileges
+  startPcapCapture(); // rolling .pcap for export
+  });
+}
+
+module.exports.start = start;
+if (require.main === module) start();

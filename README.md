@@ -87,6 +87,20 @@ sudo npm start        # sudo needed for live packet capture on macOS
 
 Then open http://localhost:8090.
 
+### One-command run
+
+```bash
+npx signalro          # once published to npm; or `node bin/signalro.js` from a clone
+```
+
+Or with Docker (no Node/tcpdump install needed):
+
+```bash
+docker build -t signalro .
+docker run --rm --net=host --cap-add=NET_RAW --cap-add=NET_ADMIN signalro
+# open http://localhost:8090   (omit the flags to just explore demo mode)
+```
+
 Without `sudo` the server still runs, but tcpdump can't open the BPF devices,
 so the page automatically switches to simulated **demo traffic** (also
 toggleable with the button in the top-right, or by opening `/?demo`).
@@ -116,6 +130,39 @@ capture capabilities once and run unprivileged:
 sudo setcap cap_net_raw,cap_net_admin+eip "$(command -v tcpdump)"
 npm start
 ```
+
+### Windows
+
+Install [npcap](https://npcap.com/) with its WinDump/tcpdump-compatible tools,
+then run from an Administrator terminal. List devices with `windump -D` and pick
+one by index:
+
+```powershell
+$env:IFACE = "1"        # device index from `windump -D`
+npm start
+```
+
+Override the binary with `CAPTURE_BIN` if your tcpdump build is named
+differently; its output is parsed the same as tcpdump.
+
+### Remote / headless capture
+
+Run the server on a Pi, router, or remote box and watch from any browser. Gate
+the live stream with a shared token:
+
+```bash
+SIGNALRO_TOKEN=choose-a-secret HOST=0.0.0.0 sudo -E npm start
+# then open  http://that-host:8090/?token=choose-a-secret
+```
+
+Without the token the page loads but receives no packet data. `HOST` sets the
+bind address (default `0.0.0.0`).
+
+### Export
+
+The **⊞ Connections & export** panel downloads the current session as **CSV**
+(flow summary, works everywhere) or **PCAP** (Wireshark-openable; needs live
+capture — the server keeps a rolling buffer).
 
 ## How it works
 

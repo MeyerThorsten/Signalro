@@ -8,8 +8,17 @@ const {
   parseRouteGetOutput, parseIpRouteOutput,
   requestRdns, rdnsCache, knownNames, _setRdnsResolver, _rdnsStats,
   extractSNI, hexLinesToBuffer,
-  parseLsof, parseSs,
+  parseLsof, parseSs, tokenOf,
 } = require('../server.js');
+
+test('tokenOf: extracts the token query param from a WS upgrade URL', () => {
+  assert.strictEqual(tokenOf('/?token=s3cret'), 's3cret');
+  assert.strictEqual(tokenOf('/?foo=1&token=abc&bar=2'), 'abc');
+  assert.strictEqual(tokenOf('/?token=a%20b'), 'a b');
+  assert.strictEqual(tokenOf('/'), null);
+  assert.strictEqual(tokenOf(''), null);
+  assert.strictEqual(tokenOf(undefined), null);
+});
 
 // Build a minimal valid TLS ClientHello carrying the given SNI host, optionally
 // prefixed with junk bytes (to simulate link-layer + IP/TCP headers).

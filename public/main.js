@@ -156,14 +156,42 @@ function hashString(s) {
 // the HUD reports the wire, filters only shape what's drawn.
 const muted = new Set();
 
+// ---------------------------------------------------------------------------
+// Customization (persisted in localStorage): custom port→protocol rules,
+// protocol→vehicle slot remap, colour-blind palette, reduced motion.
+// ---------------------------------------------------------------------------
+const LS = { rules: 'signalro-rules', slots: 'signalro-slots', cb: 'signalro-cb', motion: 'signalro-motion' };
+function lsGet(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (_) { return d; } }
+function lsSet(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (_) { /* private mode */ } }
+
+let customRules = lsGet(LS.rules, []);       // [{ port, proto }]
+const protoOverride = lsGet(LS.slots, {});   // proto family -> vehicle slot key
+let cbPalette = lsGet(LS.cb, false);
+let reduceMotion = lsGet(LS.motion, false) || (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
+
+function slotFor(proto) { return protoOverride[proto] || PROTO_TO_TYPE[proto] || 'bus'; }
+function applyCustomRules(pkt) {
+  for (const r of customRules) {
+    if (pkt.sport === r.port || pkt.dport === r.port) { pkt.proto = r.proto; return; }
+  }
+}
+// Okabe–Ito colour-blind-safe palette for the protocol slot identity colours.
+const CB_SLOT = { truck: '#009E73', sports: '#D55E00', van: '#56B4E9', car: '#0072B2', moto: '#F0E442', buggy: '#E69F00', suv: '#9aa0a6', ambulance: '#eaeaea', bus: '#CC79A7' };
+function slotColor(slot) {
+  if (cbPalette && CB_SLOT[slot]) return CB_SLOT[slot];
+  const c = FLEET && FLEET[slot] && FLEET[slot].color;
+  return c != null ? `#${c.toString(16).padStart(6, '0')}` : '#8899aa';
+}
+
 function enqueuePacket(pkt) {
+  applyCustomRules(pkt);
   // stats
   if (pkt.dir === 'out') stats.out++; else stats.in++;
   stats.bytes += pkt.len || 60;
   const remote = pkt.dir === 'out' ? pkt.dst : pkt.src;
   if (remote) destBytes.set(remote, (destBytes.get(remote) || 0) + (pkt.len || 60));
   enrichPacket(pkt, remote); // risk, blocklist flag, flow/host/app aggregation
-  if (muted.has(PROTO_TO_TYPE[pkt.proto] || 'bus')) return;
+  if (muted.has(slotFor(pkt.proto))) return;
   if (spawnQueue.length >= MAX_QUEUE) spawnQueue.shift();
   spawnQueue.push(pkt);
 }
@@ -225,6 +253,7 @@ function matchBlock(ip, name) {
 const flowStats = new Map(); // flowId -> aggregate
 const hostStats = new Map(); // remote ip -> aggregate
 const appStats = new Map();  // app name -> aggregate
+const recentFlows = [];      // {t, src, dst, dport} for newly-seen flows (~3s window)
 
 function enrichPacket(pkt, remote) {
   pkt.risk = classifyRisk(pkt);
@@ -239,6 +268,7 @@ function enrichPacket(pkt, remote) {
       f = { id: pkt.flow, proto: pkt.proto, remote, sport: pkt.sport, dport: pkt.dport,
             bytesIn: 0, bytesOut: 0, packets: 0, first: t, last: t, app: null, risk: null, flag: null };
       flowStats.set(pkt.flow, f);
+      recentFlows.push({ t, src: pkt.src, dst: pkt.dst, dport: pkt.dport });
     }
     f.proto = pkt.proto; f.remote = remote; f.last = t; f.packets++;
     if (pkt.dir === 'out') f.bytesOut += bytes; else f.bytesIn += bytes;
@@ -335,7 +365,7 @@ function evictFlowState(now) {
 
 function spawnVehicle(pkt, now) {
   if (active.length >= MAX_VEHICLES) return 'full';
-  const typeKey = PROTO_TO_TYPE[pkt.proto] || 'bus';
+  const typeKey = slotFor(pkt.proto);
   const def = FLEET[typeKey];
   const out = pkt.dir === 'out';
 
@@ -424,8 +454,8 @@ function updateVehicles(dt) {
     if (showBeacons && pk && (pk.flag || pk.risk)) {
       const col = pk.flag ? (blocklist?.lists?.[pk.flag]?.color || '#ef4444')
         : (pk.risk.level === 'risky' ? '#ff3b3b' : '#fbbf24');
-      beaconDummy.position.set(v.x, y + 2.8 * v.scale + Math.sin(tSec * 4 + v.phase) * 0.18, v.z);
-      beaconDummy.rotation.set(0.5, tSec * 2.2, 0);
+      beaconDummy.position.set(v.x, y + 2.8 * v.scale + (reduceMotion ? 0 : Math.sin(tSec * 4 + v.phase) * 0.18), v.z);
+      beaconDummy.rotation.set(0.5, reduceMotion ? 0.6 : tSec * 2.2, 0);
       beaconDummy.scale.setScalar(0.6 * v.scale);
       beaconDummy.updateMatrix();
       beaconMesh.setMatrixAt(bIdx, beaconDummy.matrix);
@@ -554,7 +584,7 @@ function updateSelection() {
   if (!selected) return;
   if (selected.dead) return clearSelection();
   selRing.position.set(selected.x, 0.06, selected.z);
-  const pulse = 1 + Math.sin(performance.now() / 180) * 0.08;
+  const pulse = reduceMotion ? 1 : 1 + Math.sin(performance.now() / 180) * 0.08;
   selRing.scale.setScalar(selected.scale * pulse);
   // Anchor tooltip above the vehicle
   projVec.set(selected.x, 3.2 * selected.scale, selected.z).project(camera);
@@ -835,9 +865,10 @@ function connect() {
   // Match the page protocol so an HTTPS host uses wss:// (a ws:// socket from an
   // https page is blocked as mixed content and throws).
   const scheme = location.protocol === 'https:' ? 'wss://' : 'ws://';
+  const tok = params.get('token');
   let ws;
   try {
-    ws = new WebSocket(`${scheme}${location.host}`);
+    ws = new WebSocket(`${scheme}${location.host}/${tok ? '?token=' + encodeURIComponent(tok) : ''}`);
   } catch (_) {
     if (!state.demoForced) state.demo = true;
     updateStatusUI({});
@@ -975,6 +1006,7 @@ setInterval(() => {
   if (++signTick % 4 === 0) updateExitSigns();
   setAudioIntensity(pps);
   pruneStats(performance.now());
+  if (typeof detectAnomalies === 'function') detectAnomalies(pps);
   if (typeof updateInsightsUI === 'function') updateInsightsUI();
 }, 500);
 
@@ -991,9 +1023,11 @@ function buildLegend() {
     chip.title = `click: hide ${def.proto} · alt-click: show only ${def.proto}`;
     const sw = document.createElement('span');
     sw.className = 'swatch';
-    sw.style.background = `#${def.color.toString(16).padStart(6, '0')}`;
+    sw.style.background = slotColor(key);
     const label = document.createElement('span');
     label.textContent = def.proto;
+    chip.tabIndex = 0;
+    chip.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleMute(key, e.altKey); } });
     const veh = document.createElement('span');
     veh.className = 'vehicle';
     veh.textContent = `· ${def.label}`;
@@ -1019,7 +1053,7 @@ function applyMutes() {
   }
   for (let i = spawnQueue.length - 1; i >= 0; i--) {
     const pkt = spawnQueue[i];
-    if (muted.has(PROTO_TO_TYPE[pkt.proto] || 'bus')) spawnQueue.splice(i, 1);
+    if (muted.has(slotFor(pkt.proto))) spawnQueue.splice(i, 1);
   }
 }
 
@@ -1308,7 +1342,7 @@ function renderConn() {
   rows.sort((a, b) => { const x = a[key], y = b[key]; return (typeof x === 'number' ? x - y : String(x).localeCompare(String(y))) * dir; });
   let html = '<thead><tr>' + CONN_COLS.map((c) => `<th data-k="${c.key}">${c.label}${connSort.key === c.key ? (dir < 0 ? ' ▾' : ' ▴') : ''}</th>`).join('') + '</tr></thead><tbody>';
   html += rows.slice(0, 200).map((r) => {
-    const col = `#${(FLEET[PROTO_TO_TYPE[r.proto] || 'bus']?.color || 0x8899aa).toString(16).padStart(6, '0')}`;
+    const col = slotColor(slotFor(r.proto));
     const flag = r.flag ? `<span style="color:${blocklist?.lists?.[r.flag]?.color || '#ef4444'}">⚑ ${escapeHtml(blocklist?.lists?.[r.flag]?.label || r.flag)}</span>`
       : (r.risk ? `<span style="color:${r.risk.level === 'risky' ? '#ff6b6b' : '#fbbf24'}">⚠ ${escapeHtml(r.risk.label)}</span>` : '');
     return `<tr class="body" data-fid="${r.f.id}"><td><span class="pdot" style="background:${col}"></span>${escapeHtml(r.proto.toUpperCase())}</td>
@@ -1348,6 +1382,128 @@ document.getElementById('export-pcap').addEventListener('click', () => {
     return;
   }
   window.open('/export/signalro.pcap', '_blank');
+});
+
+// ---------------------------------------------------------------------------
+// Anomaly alerts: traffic spikes and port-scan / sweep fan-out → a dismissible
+// banner. Detection is over the client packet stream, so it works in demo too.
+// ---------------------------------------------------------------------------
+const alertEl = document.createElement('div');
+alertEl.id = 'pr-alert';
+alertEl.style.cssText = 'position:fixed;top:60px;left:50%;transform:translateX(-50%);z-index:25;display:none;' +
+  'align-items:center;gap:9px;padding:8px 14px;font-size:12px;border-radius:9px;cursor:pointer;' +
+  'background:rgba(20,12,12,.86);border:1px solid rgba(239,68,68,.5);color:#ffd9d9;backdrop-filter:blur(8px);' +
+  'box-shadow:0 8px 30px rgba(0,0,0,.5)';
+document.body.appendChild(alertEl);
+let lastAlert = { msg: '', at: 0 };
+let alertTimer = null;
+function raiseAlert(msg, color) {
+  const t = nowMs();
+  if (msg === lastAlert.msg && t - lastAlert.at < 8000) return; // de-dupe bursts
+  lastAlert = { msg, at: t };
+  alertEl.innerHTML = `<span style="color:${color};font-size:14px">⚠</span> ${escapeHtml(msg)} <span style="color:var(--dim);margin-left:4px">✕</span>`;
+  alertEl.style.display = 'flex';
+  clearTimeout(alertTimer);
+  alertTimer = setTimeout(() => { alertEl.style.display = 'none'; }, 6000);
+}
+alertEl.addEventListener('click', () => { alertEl.style.display = 'none'; });
+
+function detectAnomalies(pps) {
+  const t = nowMs();
+  while (recentFlows.length && t - recentFlows[0].t > 3000) recentFlows.shift();
+  const hist = sparkHistory.map((s) => s.pps).slice(-30).sort((a, b) => a - b);
+  const med = hist.length ? hist[Math.floor(hist.length / 2)] : 0;
+  if (med > 0 && pps > 80 && pps > med * 3.5) {
+    raiseAlert(`Traffic spike — ${pps} pkt/s (~${Math.round(pps / Math.max(med, 1))}× baseline)`, '#fbbf24');
+  }
+  const bySrc = new Map();
+  for (const r of recentFlows) {
+    const e = bySrc.get(r.src) || { ports: new Set(), hosts: new Set() };
+    if (r.dport != null) e.ports.add(r.dport);
+    if (r.dst) e.hosts.add(r.dst);
+    bySrc.set(r.src, e);
+  }
+  for (const [src, e] of bySrc) {
+    if (e.ports.size >= 15) { raiseAlert(`Possible port scan from ${src} — ${e.ports.size} ports probed`, '#ff6b6b'); break; }
+    if (e.hosts.size >= 30) { raiseAlert(`Address sweep from ${src} — ${e.hosts.size} hosts`, '#ff6b6b'); break; }
+  }
+}
+Object.assign(window.__pr, { raiseAlert, _injectScan: () => {
+  for (let i = 20; i < 45; i++) enqueuePacket({ proto: 'tcp', dir: 'out', len: 60, src: '192.168.1.10', dst: '203.0.113.9', flow: nextDemoFlow++, sport: 50000 + i, dport: i });
+} });
+
+// ---------------------------------------------------------------------------
+// Settings overlay: accessibility, custom port rules, protocol→vehicle remap.
+// ---------------------------------------------------------------------------
+const settingsOverlay = document.getElementById('settings-overlay');
+const PROTO_KEYS = Object.keys(PROTO_TO_TYPE);
+const SLOT_KEYS = [...new Set(Object.values(PROTO_TO_TYPE))];
+const ruleProto = document.getElementById('rule-proto');
+ruleProto.innerHTML = PROTO_KEYS.map((p) => `<option value="${p}">${p}</option>`).join('');
+
+function openSettings() {
+  settingsOverlay.classList.add('open');
+  renderRules(); renderSlots();
+  document.getElementById('opt-cb').checked = cbPalette;
+  document.getElementById('opt-motion').checked = reduceMotion;
+}
+function closeSettings() { settingsOverlay.classList.remove('open'); }
+document.getElementById('btn-settings').addEventListener('click', openSettings);
+document.getElementById('settings-close').addEventListener('click', closeSettings);
+settingsOverlay.addEventListener('click', (e) => { if (e.target === settingsOverlay) closeSettings(); });
+
+function renderRules() {
+  const list = document.getElementById('rules-list');
+  if (!customRules.length) { list.innerHTML = '<div class="hint">no custom rules yet</div>'; return; }
+  list.innerHTML = customRules.map((r, i) =>
+    `<div class="rule-row">port <b>${r.port}</b> <span class="hint">→</span> <b>${escapeHtml(r.proto)}</b><span class="rm" data-i="${i}">remove</span></div>`).join('');
+  list.querySelectorAll('.rm').forEach((x) => x.addEventListener('click', () => {
+    customRules.splice(Number(x.dataset.i), 1); lsSet(LS.rules, customRules); renderRules();
+  }));
+}
+document.getElementById('rule-add-btn').addEventListener('click', () => {
+  const port = parseInt(document.getElementById('rule-port').value, 10);
+  if (!port || port < 1 || port > 65535) return;
+  customRules = customRules.filter((r) => r.port !== port);
+  customRules.push({ port, proto: ruleProto.value });
+  lsSet(LS.rules, customRules);
+  document.getElementById('rule-port').value = '';
+  renderRules();
+});
+
+function renderSlots() {
+  const grid = document.getElementById('slot-grid');
+  grid.innerHTML = PROTO_KEYS.map((p) => {
+    const cur = protoOverride[p] || PROTO_TO_TYPE[p];
+    return `<div class="slot-row"><span class="pl">${p}</span><select data-p="${p}">` +
+      SLOT_KEYS.map((s) => `<option value="${s}" ${s === cur ? 'selected' : ''}>${escapeHtml(FLEET[s]?.label || s)}</option>`).join('') +
+      '</select></div>';
+  }).join('');
+  grid.querySelectorAll('select').forEach((sel) => sel.addEventListener('change', () => {
+    const p = sel.dataset.p;
+    if (sel.value === PROTO_TO_TYPE[p]) delete protoOverride[p]; else protoOverride[p] = sel.value;
+    lsSet(LS.slots, protoOverride);
+  }));
+}
+document.getElementById('slot-reset').addEventListener('click', () => {
+  for (const k of Object.keys(protoOverride)) delete protoOverride[k];
+  lsSet(LS.slots, protoOverride); renderSlots();
+});
+document.getElementById('opt-cb').addEventListener('change', (e) => { cbPalette = e.target.checked; lsSet(LS.cb, cbPalette); buildLegend(); });
+document.getElementById('opt-motion').addEventListener('change', (e) => { reduceMotion = e.target.checked; lsSet(LS.motion, reduceMotion); });
+
+// Global keyboard shortcuts
+window.addEventListener('keydown', (e) => {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') { if (e.key === 'Escape') e.target.blur(); return; }
+  if (e.key === '/') { e.preventDefault(); searchInput.focus(); }
+  else if (e.key === 'p') { btnPause.click(); }
+  else if (e.key === 'd') { btnDemo.click(); }
+  else if (e.key === 's') { settingsOverlay.classList.contains('open') ? closeSettings() : openSettings(); }
+  else if (e.key === 'Escape') {
+    if (settingsOverlay.classList.contains('open')) closeSettings();
+    else if (connOpen) closeConn();
+    else if (highlight.active) clearHighlight();
+  }
 });
 
 let connTick = 0;
