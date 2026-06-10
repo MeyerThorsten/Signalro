@@ -837,6 +837,7 @@ export const THEMES = {
 
   rome: {
     label: 'Roman Holiday',
+    fleet: 'chariots',
     bg: 0xd9a05e, fog: [0xd9a05e, 110, 320],
     build(ctx) {
       const { ROAD_HALF_W, Z_FAR } = ctx.C;
@@ -859,6 +860,7 @@ export const THEMES = {
 
   fury: {
     label: 'Fury Road',
+    fleet: 'warrigs',
     bg: 0xd97f3e, fog: [0xd97f3e, 80, 260],
     build(ctx) {
       const { ROAD_HALF_W, Z_FAR } = ctx.C;
@@ -958,6 +960,7 @@ export const THEMES = {
 
   mars: {
     label: 'Red Planet',
+    fleet: 'rovers',
     bg: 0xc97a4e, fog: [0xc97a4e, 90, 280],
     build(ctx) {
       const { Z_FAR } = ctx.C;
@@ -1343,6 +1346,7 @@ export const THEMES = {
 
   shire: {
     label: 'The Shire',
+    fleet: 'wagons',
     bg: 0x8ec8e8, fog: [0x8ec8e8, 140, 400],
     build(ctx) {
       const { ROAD_HALF_W, Z_FAR } = ctx.C;
@@ -1369,6 +1373,7 @@ export const THEMES = {
   // ===== Game worlds =====
   voxel: {
     label: 'Voxel World',
+    fleet: 'minecarts',
     bg: 0x88c8ff, fog: [0x88c8ff, 150, 430],
     build(ctx) {
       const { ROAD_HALF_W, Z_FAR } = ctx.C;
@@ -1383,6 +1388,7 @@ export const THEMES = {
   },
   witcher: {
     label: 'Northern Path',
+    fleet: 'wagons',
     bg: 0x2a2e34, fog: [0x2a2e34, 70, 250],
     build(ctx) {
       const { ROAD_HALF_W, Z_FAR } = ctx.C;
@@ -1463,6 +1469,7 @@ export const THEMES = {
   },
   crystal: {
     label: 'Crystal Expanse',
+    fleet: 'crystalpods',
     bg: 0xc8d8f0, fog: [0xc8d8f0, 110, 360],
     build(ctx) {
       const { ROAD_HALF_W, Z_FAR } = ctx.C;
@@ -1661,6 +1668,7 @@ export const THEMES = {
   },
   cuphead: {
     label: 'Rubber Hose',
+    fleet: 'vintage',
     bg: 0xe8d8b0, fog: [0xe8d8b0, 120, 380],
     build(ctx) {
       const { ROAD_HALF_W, Z_FAR } = ctx.C;
@@ -1675,6 +1683,7 @@ export const THEMES = {
   },
   okami: {
     label: 'Ink Wash',
+    fleet: 'wagons',
     bg: 0xefe6d2, fog: [0xefe6d2, 130, 400],
     build(ctx) {
       const { ROAD_HALF_W, Z_FAR } = ctx.C;
@@ -1754,6 +1763,7 @@ export const THEMES = {
   },
   hallownest: {
     label: 'Hallownest',
+    fleet: 'bugs',
     bg: 0x06101a, fog: [0x06101a, 60, 220],
     build(ctx) {
       const { ROAD_HALF_W, Z_FAR } = ctx.C;

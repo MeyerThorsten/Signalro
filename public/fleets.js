@@ -183,6 +183,101 @@ function armorUnit(slot, w, len, speed, label, proto, turret) {
   ]);
 }
 
+// Blocky Minecraft-style minecart with ore in the slot colour.
+function minecart(slot, len, speed, label, proto) {
+  const c = C[slot];
+  return T(label, proto, slot, speed, [
+    [0, 0.75, 0, 1.7, 0.9, len, 0x5a4636],
+    [0, 1.05, 0, 1.3, 0.6, len * 0.82, c],
+    [0, 0.35, len / 2 + 0.1, 1.5, 0.3, 0.3, 0x3a2e22],
+    ...wheels4(1.7, len, 0.45, 0x2a2018),
+  ], [[0, 0.9, len / 2 + 0.12, 0.5, 0.3, 0.06, EYE], [0, 0.9, -len / 2 - 0.12, 0.5, 0.25, 0.06, TAIL]]);
+}
+// Roman chariot: basket + two big wheels + a horse.
+function chariot(slot, len, speed, label, proto) {
+  const c = C[slot];
+  return T(label, proto, slot, speed, [
+    [0, 0.95, -len * 0.3, 1.5, 0.9, 1.6, c],
+    [0, 1.5, -len * 0.3, 1.4, 0.5, 0.2, 0xd9b46a],
+    [0, 1.0, len * 0.25, 0.8, 1.1, 1.9, 0x6e4a30],
+    [0, 1.7, len * 0.25 + 1.0, 0.5, 0.6, 0.7, 0x5a3a26],
+    [-0.9, 0.55, -len * 0.3, 0.18, 1.1, 1.1, 0x3a2a18], [0.9, 0.55, -len * 0.3, 0.18, 1.1, 1.1, 0x3a2a18],
+  ], [[0, 1.2, len * 0.25 + 1.35, 0.18, 0.12, 0.06, EYE]]);
+}
+// Medieval covered wagon pulled by a horse.
+function wagon(slot, len, speed, label, proto) {
+  const c = C[slot];
+  return T(label, proto, slot, speed, [
+    [0, 0.9, -len * 0.25, 1.8, 1.0, len * 0.5, 0x6e5436],
+    [0, 1.7, -len * 0.25, 1.7, 0.8, len * 0.45, c],
+    [0, 1.05, len * 0.35, 0.9, 1.2, 1.8, 0x5a3e26],
+    [0, 1.8, len * 0.35 + 1.0, 0.5, 0.6, 0.7, 0x4a3220],
+    ...wheels4(1.9, len * 0.5, 0.6, 0x3a2a18),
+  ], [[0, 1.05, len / 2 + 0.4, 0.4, 0.3, 0.06, EYE]]);
+}
+// Wasteland war-rig: armed, rusty, smoke-belching.
+function warrig(slot, len, speed, label, proto) {
+  const c = C[slot];
+  return T(label, proto, slot, speed, [
+    [0, 0.85, 0, 2.0, 0.9, len, c],
+    [0, 1.45, -len * 0.1, 1.6, 0.6, len * 0.5, 0x4a3a2a],
+    [0, 1.0, len / 2 + 0.2, 0.3, 0.3, 1.0, 0x2a2018],
+    [0, 2.05, -len * 0.2, 0.22, 1.2, 0.22, 0x1a1410],
+    ...wheels4(2.2, len, 0.78, 0x1a1410),
+  ], [
+    [-0.5, 0.9, len / 2 + 0.6, 0.3, 0.18, 0.06, EYE], [0.5, 0.9, len / 2 + 0.6, 0.3, 0.18, 0.06, EYE],
+    [0, 2.15, -len * 0.2, 0.26, 0.22, 0.26, 0xff5a2a],
+  ]);
+}
+// Six-wheel space rover with a solar panel and antenna.
+function rover(slot, len, speed, label, proto) {
+  const c = C[slot];
+  return T(label, proto, slot, speed, [
+    [0, 0.95, 0, 1.6, 0.6, len, c],
+    [0, 1.5, 0.2, 2.4, 0.08, len * 0.6, 0x1a3a6a],
+    [0, 1.35, -len * 0.3, 0.7, 0.5, 0.7, GLASS],
+    [0, 2.0, -len * 0.3, 0.06, 1.0, 0.06, 0xbfc8d4],
+    [-0.95, 0.45, len * 0.32, 0.3, 0.7, 0.7, 0x2a2a2a], [0.95, 0.45, len * 0.32, 0.3, 0.7, 0.7, 0x2a2a2a],
+    [-0.95, 0.45, 0, 0.3, 0.7, 0.7, 0x2a2a2a], [0.95, 0.45, 0, 0.3, 0.7, 0.7, 0x2a2a2a],
+    [-0.95, 0.45, -len * 0.32, 0.3, 0.7, 0.7, 0x2a2a2a], [0.95, 0.45, -len * 0.32, 0.3, 0.7, 0.7, 0x2a2a2a],
+  ], [[0, 2.06, -len * 0.3, 0.12, 0.12, 0.12, EYE], [-0.45, 0.95, len / 2, 0.3, 0.16, 0.06, EYE], [0.45, 0.95, len / 2, 0.3, 0.16, 0.06, EYE]]);
+}
+// Beetle/insect with a carapace, six legs and glowing eyes.
+function bug(slot, len, speed, label, proto) {
+  const c = C[slot]; const w = len * 0.7;
+  return T(label, proto, slot, speed, [
+    [0, 0.7, 0, w, 0.7, len, c],
+    [0, 1.0, 0, w * 0.7, 0.5, len * 0.8, 0x14100a],
+    [0, 0.6, len / 2 + 0.2, w * 0.5, 0.5, 0.5, 0x241a10],
+    [-0.12, 0.95, len / 2 + 0.6, 0.05, 0.05, 0.5, 0x14100a], [0.12, 0.95, len / 2 + 0.6, 0.05, 0.05, 0.5, 0x14100a],
+    [-(w / 2 + 0.1), 0.25, len * 0.3, 0.35, 0.45, 0.1, 0x14100a], [(w / 2 + 0.1), 0.25, len * 0.3, 0.35, 0.45, 0.1, 0x14100a],
+    [-(w / 2 + 0.1), 0.25, 0, 0.35, 0.45, 0.1, 0x14100a], [(w / 2 + 0.1), 0.25, 0, 0.35, 0.45, 0.1, 0x14100a],
+    [-(w / 2 + 0.1), 0.25, -len * 0.3, 0.35, 0.45, 0.1, 0x14100a], [(w / 2 + 0.1), 0.25, -len * 0.3, 0.35, 0.45, 0.1, 0x14100a],
+  ], [[-0.18, 0.72, len / 2 + 0.45, 0.1, 0.1, 0.06, c], [0.18, 0.72, len / 2 + 0.45, 0.1, 0.1, 0.06, c]]);
+}
+// 1930s rubber-hose jalopy: round body, big wheels, round headlights.
+function jalopy(slot, len, speed, label, proto) {
+  const c = C[slot];
+  return T(label, proto, slot, speed, [
+    [0, 0.75, 0, 1.5, 0.7, len, c],
+    [0, 1.25, -len * 0.1, 1.3, 0.6, len * 0.4, 0x2a2420],
+    [0, 0.55, len * 0.42, 1.6, 0.4, 0.5, c],
+    ...wheels4(1.7, len, 0.62, 0x1a1410),
+    [0, 1.0, len * 0.5, 0.2, 0.5, 0.2, 0xc8b890],
+  ], [[-0.5, 0.7, len / 2 + 0.05, 0.28, 0.28, 0.06, EYE], [0.5, 0.7, len / 2 + 0.05, 0.28, 0.28, 0.06, EYE]]);
+}
+// Floating crystal pod: dark base, glowing crystalline core (hovers).
+function crystalPod(slot, len, speed, label, proto) {
+  const c = C[slot];
+  return T(label, proto, slot, speed, [
+    [0, 1.0, 0, 0.9, 0.5, len, 0x2a3450],
+  ], [
+    [0, 1.55, 0, 0.7, 1.4, 0.7, c],
+    [0, 1.5, len * 0.3, 0.4, 0.9, 0.4, c], [0, 1.5, -len * 0.3, 0.4, 0.9, 0.4, c],
+    [0, 0.9, 0, 1.1, 0.12, len * 1.1, c],
+  ], { y: 0.8, bob: 0.25, bobF: 1.6 });
+}
+
 export const FLEETS = {
   cars: VEHICLE_TYPES,
 
@@ -777,5 +872,62 @@ export const FLEETS = {
     suv: armorUnit('suv', 2.2, 4.4, 30, 'armored SUV', 'SSH', false),
     ambulance: armorUnit('ambulance', 2.2, 4.2, 34, 'field ambulance', 'ICMP', false),
     bus: armorUnit('bus', 2.6, 6.0, 20, 'troop transport', 'OTHER', false),
+  },
+
+  minecarts: {
+    truck: minecart('truck', 4.4, 22, 'cargo cart', 'HTTPS'), sports: minecart('sports', 2.6, 46, 'rail racer', 'QUIC'),
+    van: minecart('van', 3.2, 28, 'supply cart', 'HTTP'), car: minecart('car', 2.8, 32, 'minecart', 'TCP'),
+    moto: minecart('moto', 1.8, 46, 'rail trolley', 'DNS'), buggy: minecart('buggy', 2.6, 36, 'ore cart', 'UDP'),
+    suv: minecart('suv', 3.0, 30, 'iron cart', 'SSH'), ambulance: minecart('ambulance', 3.0, 36, 'cleric cart', 'ICMP'),
+    bus: minecart('bus', 5.2, 22, 'mine wagon', 'OTHER'),
+  },
+  chariots: {
+    truck: chariot('truck', 4.4, 24, 'war chariot', 'HTTPS'), sports: chariot('sports', 3.4, 48, 'racing biga', 'QUIC'),
+    van: chariot('van', 3.8, 28, 'cargo chariot', 'HTTP'), car: chariot('car', 3.6, 32, 'chariot', 'TCP'),
+    moto: chariot('moto', 3.0, 46, 'light biga', 'DNS'), buggy: chariot('buggy', 3.4, 36, 'courier chariot', 'UDP'),
+    suv: chariot('suv', 3.8, 30, 'heavy chariot', 'SSH'), ambulance: chariot('ambulance', 3.6, 38, 'medic chariot', 'ICMP'),
+    bus: chariot('bus', 4.8, 22, 'quadriga', 'OTHER'),
+  },
+  wagons: {
+    truck: wagon('truck', 4.8, 20, 'merchant wagon', 'HTTPS'), sports: wagon('sports', 3.4, 42, 'fast cart', 'QUIC'),
+    van: wagon('van', 4.0, 26, 'covered cart', 'HTTP'), car: wagon('car', 3.6, 30, 'horse cart', 'TCP'),
+    moto: wagon('moto', 2.8, 42, 'pony trap', 'DNS'), buggy: wagon('buggy', 3.4, 34, 'hay cart', 'UDP'),
+    suv: wagon('suv', 3.8, 28, 'ox cart', 'SSH'), ambulance: wagon('ambulance', 3.8, 32, 'healer wagon', 'ICMP'),
+    bus: wagon('bus', 5.6, 20, 'caravan', 'OTHER'),
+  },
+  warrigs: {
+    truck: warrig('truck', 6.0, 22, 'war rig', 'HTTPS'), sports: warrig('sports', 3.6, 48, 'interceptor', 'QUIC'),
+    van: warrig('van', 4.2, 28, 'scrap hauler', 'HTTP'), car: warrig('car', 3.8, 34, 'muscle car', 'TCP'),
+    moto: warrig('moto', 2.6, 48, 'chopper', 'DNS'), buggy: warrig('buggy', 3.4, 38, 'dune buggy', 'UDP'),
+    suv: warrig('suv', 4.4, 30, 'gunner', 'SSH'), ambulance: warrig('ambulance', 4.0, 36, 'medic rig', 'ICMP'),
+    bus: warrig('bus', 6.6, 20, 'doof wagon', 'OTHER'),
+  },
+  rovers: {
+    truck: rover('truck', 4.6, 20, 'cargo rover', 'HTTPS'), sports: rover('sports', 3.2, 42, 'scout rover', 'QUIC'),
+    van: rover('van', 3.8, 26, 'hab rover', 'HTTP'), car: rover('car', 3.4, 30, 'rover', 'TCP'),
+    moto: rover('moto', 2.4, 42, 'mini rover', 'DNS'), buggy: rover('buggy', 3.2, 34, 'survey buggy', 'UDP'),
+    suv: rover('suv', 3.8, 28, 'presser rover', 'SSH'), ambulance: rover('ambulance', 3.6, 32, 'med rover', 'ICMP'),
+    bus: rover('bus', 5.2, 20, 'crew transport', 'OTHER'),
+  },
+  bugs: {
+    truck: bug('truck', 3.8, 22, 'stag beetle', 'HTTPS'), sports: bug('sports', 2.4, 48, 'firefly', 'QUIC'),
+    van: bug('van', 3.0, 28, 'shell-back', 'HTTP'), car: bug('car', 2.6, 34, 'beetle', 'TCP'),
+    moto: bug('moto', 1.8, 48, 'gnat', 'DNS'), buggy: bug('buggy', 2.4, 38, 'roach', 'UDP'),
+    suv: bug('suv', 3.0, 30, 'weevil', 'SSH'), ambulance: bug('ambulance', 2.8, 36, 'glow-bug', 'ICMP'),
+    bus: bug('bus', 4.4, 22, 'beetle-queen', 'OTHER'),
+  },
+  vintage: {
+    truck: jalopy('truck', 4.0, 22, 'delivery truck', 'HTTPS'), sports: jalopy('sports', 3.0, 46, 'roadster', 'QUIC'),
+    van: jalopy('van', 3.4, 28, 'panel van', 'HTTP'), car: jalopy('car', 3.0, 32, 'jalopy', 'TCP'),
+    moto: jalopy('moto', 2.2, 44, 'putt-putt', 'DNS'), buggy: jalopy('buggy', 2.8, 36, 'runabout', 'UDP'),
+    suv: jalopy('suv', 3.2, 30, 'sedan', 'SSH'), ambulance: jalopy('ambulance', 3.2, 38, 'ambulance', 'ICMP'),
+    bus: jalopy('bus', 5.0, 22, 'omnibus', 'OTHER'),
+  },
+  crystalpods: {
+    truck: crystalPod('truck', 4.2, 24, 'crystal barge', 'HTTPS'), sports: crystalPod('sports', 2.8, 48, 'shard racer', 'QUIC'),
+    van: crystalPod('van', 3.2, 28, 'prism pod', 'HTTP'), car: crystalPod('car', 3.0, 34, 'crystal pod', 'TCP'),
+    moto: crystalPod('moto', 2.0, 48, 'spark', 'DNS'), buggy: crystalPod('buggy', 2.6, 38, 'facet', 'UDP'),
+    suv: crystalPod('suv', 3.2, 32, 'geode', 'SSH'), ambulance: crystalPod('ambulance', 3.0, 38, 'lumen pod', 'ICMP'),
+    bus: crystalPod('bus', 5.0, 22, 'monolith', 'OTHER'),
   },
 };
