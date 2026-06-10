@@ -50,6 +50,33 @@ Interactions:
 - A connection's packets drive as a **convoy**: same lane, same speed, evenly
   spaced — a download reads as a line of trucks.
 
+## Analysis & insights
+
+Signalro is also an inspector, not just a visualization:
+
+- **Named destinations** — TLS **SNI** is parsed from the ClientHello so HTTPS
+  vehicles show the real domain (e.g. `github.com`), not a bare IP.
+- **Process attribution** — each connection is tagged with the owning app
+  (`lsof`/`ss`), shown in tooltips, the top-talkers panel, and the connections
+  table.
+- **Insights panel** (right) — top talkers by **host / org / app**, with a live
+  bandwidth bar; click to spotlight that traffic (everything else dims).
+- **Search** (top) — highlight vehicles by IP, hostname, port, protocol, or app.
+- **Connections table** (`⊞`) — a sortable, netstat-style view of every live
+  flow; click a row to spotlight its convoy.
+- **Security** — plaintext (HTTP/FTP/Telnet…) and risky ports (RDP/SMB/VNC…) get
+  a beacon and a HUD count; remote IPs/domains are matched against an offline
+  **blocklist** (`public/blocklist.json`: Tor/known-bad ranges, ad/tracker and
+  cryptominer domains). **Port-scan and traffic-spike** anomalies raise an alert.
+- **Time scrubber** (`⏱` / `t`) — replay the last 2 minutes from any point.
+- **Globe view** (`🌐` / `g`) — the same traffic as GeoIP arcs on a 3D globe.
+- **Export** — download the session as **CSV** or a Wireshark-openable **PCAP**.
+- **Settings** (`⚙` / `s`) — colour-blind-safe palette, reduced motion, custom
+  port→protocol rules, and protocol→vehicle remapping (all persisted).
+
+Keyboard: `/` search · `p` pause · `d` demo · `t` timeline · `g` globe ·
+`s` settings · `Esc` close/clear.
+
 ## Themes
 
 The surroundings are switchable via the dropdown in the top-right (persisted,

@@ -281,6 +281,18 @@
     .slot-row .pl { width: 56px; color: var(--dim); }
     .slot-row select { flex: 1; }
     .reset { margin-top: 10px; }
+
+    /* time scrubber */
+    #timeline { position: fixed; bottom: 70px; left: 50%; transform: translateX(-50%); z-index: 14;
+      display: none; align-items: center; gap: 10px; padding: 8px 12px; }
+    #timeline.open { display: flex; }
+    #timeline.replaying { border-color: rgba(125,211,252,.5); box-shadow: 0 0 0 1px rgba(125,211,252,.3); }
+    #tl-canvas { width: 460px; max-width: 60vw; height: 44px; cursor: crosshair; border-radius: 6px; background: rgba(8,12,24,.5); }
+    #tl-play, #tl-live { font: inherit; font-size: 11px; color: var(--text); background: rgba(40,56,96,.6);
+      border: 1px solid var(--border); border-radius: 6px; padding: 6px 10px; cursor: pointer; white-space: nowrap; }
+    #tl-live { color: var(--green); }
+    #tl-live.on { background: rgba(74,222,128,.18); border-color: rgba(74,222,128,.5); }
+    #tl-time { font-size: 11px; font-variant-numeric: tabular-nums; min-width: 58px; text-align: center; }
   </style>
 </head>
 <body>
@@ -307,7 +319,16 @@
     <button id="btn-pause">⏸ pause</button>
     <button id="btn-demo">demo traffic</button>
     <button id="btn-sound" title="engine hum follows traffic intensity">🔇 sound</button>
+    <button id="btn-timeline" title="time scrubber / replay (t)" aria-label="time scrubber">⏱</button>
+    <button id="btn-globe" title="globe view (g)" aria-label="globe view">🌐</button>
     <button id="btn-settings" title="settings (s)" aria-label="settings">⚙</button>
+  </div>
+
+  <div id="timeline" class="panel">
+    <button id="tl-play" title="play / pause">⏸</button>
+    <canvas id="tl-canvas" width="900" height="44"></canvas>
+    <button id="tl-live" title="return to live">● LIVE</button>
+    <span id="tl-time" class="dim">live</span>
   </div>
 
   <div id="search" class="panel">

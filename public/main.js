@@ -7,6 +7,7 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { PROTO_TO_TYPE, buildVehicleMeshes } from './vehicles.js';
 import { FLEETS } from './fleets.js';
 import { THEMES, buildThemeEnvironment, disposeGroup } from './themes.js';
+import { createGlobe, CC_LATLNG } from './globe.js';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -52,6 +53,7 @@ window.addEventListener('resize', () => {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
+  if (typeof globe !== 'undefined' && globe) globe.resize();
 });
 
 // ---------------------------------------------------------------------------
@@ -194,6 +196,52 @@ function enqueuePacket(pkt) {
   if (muted.has(slotFor(pkt.proto))) return;
   if (spawnQueue.length >= MAX_QUEUE) spawnQueue.shift();
   spawnQueue.push(pkt);
+}
+
+// ---------------------------------------------------------------------------
+// Time scrubber: a rolling buffer of recent packets that can be replayed. All
+// ingestion (live + demo) flows through ingest(): it records to the buffer and,
+// unless we're replaying, spawns the packet live.
+// ---------------------------------------------------------------------------
+const REPLAY_WINDOW = 120e3; // keep ~2 minutes
+const replayBuffer = [];     // { t, pkt }
+const replay = { active: false, playing: false, cursor: 0, idx: 0, frames: null };
+
+function ingest(pkt) {
+  const t = Date.now();
+  replayBuffer.push({ t, pkt });
+  while (replayBuffer.length && t - replayBuffer[0].t > REPLAY_WINDOW) replayBuffer.shift();
+  if (!replay.active) enqueuePacket(pkt);
+}
+
+function enterReplay(t) {
+  replay.frames = replayBuffer.slice();       // snapshot so live recording can't shift it
+  replay.active = true; replay.playing = true; replay.cursor = t;
+  replay.idx = replay.frames.findIndex((e) => e.t > t);
+  if (replay.idx < 0) replay.idx = replay.frames.length;
+  active.length = 0; spawnQueue.length = 0; clearHighlight(); clearSelection();
+}
+function seekReplay(t) {
+  if (!replay.active) return enterReplay(t);
+  replay.cursor = t;
+  replay.idx = replay.frames.findIndex((e) => e.t > t);
+  if (replay.idx < 0) replay.idx = replay.frames.length;
+  active.length = 0; spawnQueue.length = 0;
+}
+function exitReplay() {
+  replay.active = false; replay.playing = false; replay.frames = null;
+  active.length = 0; spawnQueue.length = 0;
+}
+function replayTick(dtSec) {
+  if (!replay.active || !replay.playing) return;
+  const frames = replay.frames;
+  const end = frames.length ? frames[frames.length - 1].t : replay.cursor;
+  replay.cursor = Math.min(replay.cursor + dtSec * 1000, end);
+  while (replay.idx < frames.length && frames[replay.idx].t <= replay.cursor) {
+    enqueuePacket({ ...frames[replay.idx].pkt });
+    replay.idx++;
+  }
+  if (replay.cursor >= end) replay.playing = false; // caught up to the snapshot end
 }
 
 // ---------------------------------------------------------------------------
@@ -798,7 +846,7 @@ function generateDemoTraffic(dt) {
     demoBurst--;
     const [lo, hi] = DEMO_SIZES[demoBurstProto];
     const burstHost = DEMO_HOSTS[hashString(demoBurstProto + demoBurstFlow) % DEMO_HOSTS.length];
-    enqueuePacket({
+    ingest({
       proto: demoBurstProto, dir: demoBurstDir,
       len: lo + Math.random() * (hi - lo),
       src: demoBurstDir === 'in' ? burstHost : '192.168.1.10',
@@ -813,7 +861,7 @@ function generateDemoTraffic(dt) {
     const [lo, hi] = DEMO_SIZES[proto];
     const dir = Math.random() < 0.58 ? 'in' : 'out';
     const host = DEMO_HOSTS[Math.floor(Math.random() * DEMO_HOSTS.length)];
-    enqueuePacket({
+    ingest({
       proto, dir, len: lo + Math.random() * (hi - lo),
       src: dir === 'in' ? host : '192.168.1.10',
       dst: dir === 'in' ? '192.168.1.10' : host,
@@ -827,17 +875,17 @@ function generateDemoTraffic(dt) {
     const roll = Math.random();
     if (roll < 0.45) { // risky service port (+ malware IP range)
       const [port, app] = [[3389, 'mstsc'], [445, 'smbd'], [23, 'telnet'], [5900, 'screensharingd']][Math.floor(Math.random() * 4)];
-      enqueuePacket({ proto: 'tcp', dir: 'out', len: 120 + Math.random() * 400,
+      ingest({ proto: 'tcp', dir: 'out', len: 120 + Math.random() * 400,
         src: '192.168.1.10', dst: '45.66.33.12', flow: nextDemoFlow++,
         sport: 49000 + Math.floor(Math.random() * 9000), dport: port, app });
     } else if (roll < 0.8) { // ad/tracker beacon
       const host = '34.117.59.81';
-      enqueuePacket({ proto: 'https', dir: 'out', len: 200 + Math.random() * 300,
+      ingest({ proto: 'https', dir: 'out', len: 200 + Math.random() * 300,
         src: '192.168.1.10', dst: host, flow: hashString(host) % 100000,
         app: 'Google Chrome', ...demoPorts('https', 'out') });
     } else { // Tor relay
       const host = '171.25.193.77';
-      enqueuePacket({ proto: 'tcp', dir: 'out', len: 300 + Math.random() * 600,
+      ingest({ proto: 'tcp', dir: 'out', len: 300 + Math.random() * 600,
         src: '192.168.1.10', dst: host, flow: hashString(host) % 100000,
         app: 'tor', sport: 49000 + Math.floor(Math.random() * 9000), dport: 9001 });
     }
@@ -885,7 +933,7 @@ function connect() {
     } else if (msg.type === 'names') {
       for (const [ip, name] of Object.entries(msg.names)) hostNames.set(ip, name);
     } else if (msg.type === 'packets' && !state.demo && !state.paused) {
-      for (const pkt of msg.packets) enqueuePacket(pkt);
+      for (const pkt of msg.packets) ingest(pkt);
     }
   };
   ws.onclose = () => {
@@ -1008,6 +1056,8 @@ setInterval(() => {
   pruneStats(performance.now());
   if (typeof detectAnomalies === 'function') detectAnomalies(pps);
   if (typeof updateInsightsUI === 'function') updateInsightsUI();
+  if (typeof drawTimeline === 'function') { drawTimeline(); updateTlButtons(); }
+  if (globeMode) updateGlobeArcs();
 }, 500);
 
 // Legend — chips are clickable filters: click mutes/unmutes a protocol
@@ -1429,7 +1479,7 @@ function detectAnomalies(pps) {
   }
 }
 Object.assign(window.__pr, { raiseAlert, _injectScan: () => {
-  for (let i = 20; i < 45; i++) enqueuePacket({ proto: 'tcp', dir: 'out', len: 60, src: '192.168.1.10', dst: '203.0.113.9', flow: nextDemoFlow++, sport: 50000 + i, dport: i });
+  for (let i = 20; i < 45; i++) ingest({ proto: 'tcp', dir: 'out', len: 60, src: '192.168.1.10', dst: '203.0.113.9', flow: nextDemoFlow++, sport: 50000 + i, dport: i });
 } });
 
 // ---------------------------------------------------------------------------
@@ -1499,12 +1549,122 @@ window.addEventListener('keydown', (e) => {
   else if (e.key === 'p') { btnPause.click(); }
   else if (e.key === 'd') { btnDemo.click(); }
   else if (e.key === 's') { settingsOverlay.classList.contains('open') ? closeSettings() : openSettings(); }
+  else if (e.key === 't') { toggleTimeline(); }
+  else if (e.key === 'g') { toggleGlobe(); }
   else if (e.key === 'Escape') {
     if (settingsOverlay.classList.contains('open')) closeSettings();
     else if (connOpen) closeConn();
     else if (highlight.active) clearHighlight();
   }
 });
+
+// ---------------------------------------------------------------------------
+// Time scrubber UI: a histogram of the rolling buffer with a draggable
+// playhead; drag to seek into a replay, play/pause, or return to LIVE.
+// ---------------------------------------------------------------------------
+const tlPanel = document.getElementById('timeline');
+const tlCanvas = document.getElementById('tl-canvas');
+const tlCtx = tlCanvas.getContext('2d');
+const tlPlay = document.getElementById('tl-play');
+const tlLive = document.getElementById('tl-live');
+const tlTime = document.getElementById('tl-time');
+let tlOpen = false;
+
+function toggleTimeline() {
+  tlOpen = !tlOpen;
+  tlPanel.classList.toggle('open', tlOpen);
+  document.getElementById('btn-timeline').classList.toggle('active', tlOpen);
+  if (!tlOpen && replay.active) exitReplay();
+  updateTlButtons(); drawTimeline();
+}
+document.getElementById('btn-timeline').addEventListener('click', toggleTimeline);
+
+function bufEnds(buf) { return buf.length ? [buf[0].t, Math.max(buf[buf.length - 1].t, buf[0].t + 1000)] : [0, 0]; }
+
+tlPlay.addEventListener('click', () => {
+  if (!replay.active) { if (replayBuffer.length) enterReplay(replayBuffer[0].t); }
+  else {
+    const end = replay.frames.length ? replay.frames[replay.frames.length - 1].t : 0;
+    if (replay.cursor >= end) enterReplay(replay.frames[0].t); // restart
+    else replay.playing = !replay.playing;
+  }
+  updateTlButtons();
+});
+tlLive.addEventListener('click', () => { if (replay.active) exitReplay(); updateTlButtons(); });
+
+function updateTlButtons() {
+  tlPlay.textContent = (replay.active && replay.playing) ? '⏸' : '⏵';
+  tlLive.classList.toggle('on', !replay.active);
+  tlPanel.classList.toggle('replaying', replay.active);
+}
+
+let tlDragging = false;
+function tlSeekFromEvent(e) {
+  const rect = tlCanvas.getBoundingClientRect();
+  const x = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+  const buf = replay.active ? replay.frames : replayBuffer;
+  if (!buf.length) return;
+  const [t0, t1] = bufEnds(buf);
+  const t = t0 + x * (t1 - t0);
+  if (!replay.active) enterReplay(t); else seekReplay(t);
+  replay.playing = false; updateTlButtons();
+}
+tlCanvas.addEventListener('pointerdown', (e) => { tlDragging = true; tlCanvas.setPointerCapture(e.pointerId); tlSeekFromEvent(e); });
+tlCanvas.addEventListener('pointermove', (e) => { if (tlDragging) tlSeekFromEvent(e); });
+tlCanvas.addEventListener('pointerup', () => { tlDragging = false; });
+
+function drawTimeline() {
+  if (!tlOpen) return;
+  const W = tlCanvas.width, H = tlCanvas.height;
+  tlCtx.clearRect(0, 0, W, H);
+  const buf = replay.active ? replay.frames : replayBuffer;
+  if (!buf.length) { tlTime.textContent = replay.active ? '' : 'live'; return; }
+  const [t0, t1] = bufEnds(buf);
+  const span = t1 - t0;
+  const N = 120, buckets = new Float32Array(N);
+  for (const e of buf) buckets[Math.min(N - 1, Math.floor((e.t - t0) / span * N))]++;
+  const max = Math.max(1, ...buckets);
+  const bw = W / N;
+  tlCtx.fillStyle = 'rgba(125,211,252,.5)';
+  for (let i = 0; i < N; i++) { const h = (buckets[i] / max) * (H - 6); tlCtx.fillRect(i * bw, H - h, bw - 0.5, h); }
+  const px = replay.active ? ((replay.cursor - t0) / span) * W : W;
+  tlCtx.fillStyle = replay.active ? '#7dd3fc' : '#4ade80';
+  tlCtx.fillRect(px - 1, 0, 2, H);
+  tlTime.textContent = replay.active ? (t1 - replay.cursor < 500 ? 'now' : `-${Math.round((t1 - replay.cursor) / 1000)}s`) : 'live';
+}
+
+// ---------------------------------------------------------------------------
+// Globe view: GeoIP traffic arcs. Toggles between Highway and Globe, sharing
+// the same live host/flow data.
+// ---------------------------------------------------------------------------
+let globe = null, globeMode = false;
+function toggleGlobe() {
+  globeMode = !globeMode;
+  if (globeMode && !globe) { globe = createGlobe(renderer); globe.resize(); }
+  controls.enabled = !globeMode;
+  if (globe) globe.setEnabled(globeMode);
+  document.getElementById('btn-globe').classList.toggle('active', globeMode);
+  if (globeMode) updateGlobeArcs();
+}
+document.getElementById('btn-globe').addEventListener('click', toggleGlobe);
+
+function ccColor(cc) {
+  let h = 0; for (let i = 0; i < cc.length; i++) h = (h * 31 + cc.charCodeAt(i)) % 360;
+  return new THREE.Color(`hsl(${h}, 75%, 62%)`).getHex();
+}
+function updateGlobeArcs() {
+  if (!globe) return;
+  const byCC = new Map();
+  for (const h of hostStats.values()) {
+    const g = geoLookup(h.ip);
+    if (!g || !g.cc || !CC_LATLNG[g.cc]) continue;
+    const e = byCC.get(g.cc) || { bytes: 0 };
+    e.bytes += h.bytes; byCC.set(g.cc, e);
+  }
+  const countries = [...byCC.entries()].sort((a, b) => b[1].bytes - a[1].bytes).slice(0, 14)
+    .map(([cc, e]) => ({ lat: CC_LATLNG[cc][0], lng: CC_LATLNG[cc][1], bytes: e.bytes, color: ccColor(cc) }));
+  globe.setArcs(countries);
+}
 
 let connTick = 0;
 function updateInsightsUI() {
@@ -1527,8 +1687,10 @@ const clock = new THREE.Clock();
 function animate() {
   requestAnimationFrame(animate);
   const dt = Math.min(clock.getDelta(), 0.05);
+  if (globeMode && globe) { globe.update(dt); renderer.render(globe.scene, globe.camera); return; }
   if (!state.paused) {
     if (state.demo) generateDemoTraffic(dt);
+    if (replay.active) replayTick(dt);     // feed replayed packets into the scene
     updateVehicles(dt);
   }
   if (env && env.animate) env.animate(dt); // ambient theme motion (rain, snow…)
