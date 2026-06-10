@@ -895,6 +895,7 @@ export const THEMES = {
 
   grid: {
     label: 'The Grid',
+    fleet: 'lightcycles',
     bg: 0x000308, fog: [0x000308, 120, 420],
     build(ctx) {
       addLights(ctx, { sky: 0x103048, ground: 0x000308, hemi: 1.2, sun: 0x18e0ff, sunInt: 0.4, sunPos: [0, 70, 30] });
@@ -1396,6 +1397,7 @@ export const THEMES = {
   },
   halo: {
     label: 'Halo Ring',
+    fleet: 'armor',
     bg: 0x6a8aa8, fog: [0x6a8aa8, 130, 400],
     build(ctx) {
       const { Z_FAR } = ctx.C;
@@ -1412,6 +1414,7 @@ export const THEMES = {
   },
   fallout: {
     label: 'Atomic Wastes',
+    fleet: 'armor',
     bg: 0x9a9a5e, fog: [0x9a9a5e, 90, 300],
     build(ctx) {
       const { ROAD_HALF_W, Z_FAR } = ctx.C;
@@ -1428,6 +1431,7 @@ export const THEMES = {
   },
   battlefield: {
     label: 'Frontline',
+    fleet: 'armor',
     bg: 0x4a3a2e, fog: [0x4a3a2e, 70, 240],
     build(ctx) {
       const { ROAD_HALF_W, Z_FAR } = ctx.C;
@@ -1443,6 +1447,7 @@ export const THEMES = {
   },
   nightcity: {
     label: 'Night City',
+    fleet: 'lightcycles',
     bg: 0x140a1e, fog: [0x140a1e, 90, 290],
     build(ctx) {
       addLights(ctx, { sky: 0xc8a83e, ground: 0x0e0818, hemi: 1.3, sun: 0xffd23e, sunInt: 0.6, sunPos: [0, 60, -40] });
@@ -1472,6 +1477,7 @@ export const THEMES = {
   },
   velvet: {
     label: 'Velvet Heist',
+    fleet: 'lightcycles',
     bg: 0x120308, fog: [0x120308, 90, 290],
     build(ctx) {
       const { ROAD_HALF_W, Z_FAR } = ctx.C;
@@ -1500,6 +1506,7 @@ export const THEMES = {
   },
   deusex: {
     label: 'Black & Gold',
+    fleet: 'lightcycles',
     bg: 0x0e0c08, fog: [0x0e0c08, 90, 300],
     build(ctx) {
       const { ROAD_HALF_W, Z_FAR } = ctx.C;
@@ -1514,6 +1521,7 @@ export const THEMES = {
   },
   mario: {
     label: 'Power-Up Speedway',
+    fleet: 'karts',
     bg: 0x6ec0ff, fog: [0x6ec0ff, 160, 460],
     build(ctx) {
       const { ROAD_HALF_W, Z_FAR } = ctx.C;
@@ -1560,6 +1568,7 @@ export const THEMES = {
   },
   tron: {
     label: 'Neon Freeway',
+    fleet: 'lightcycles',
     bg: 0x02030a, fog: [0x02030a, 130, 440],
     build(ctx) {
       addLights(ctx, { sky: 0x10406a, ground: 0x02030a, hemi: 1.2, sun: 0x18e0ff, sunInt: 0.4, sunPos: [0, 70, 30] });
@@ -1572,6 +1581,7 @@ export const THEMES = {
   },
   radar: {
     label: 'Tactical Radar',
+    fleet: 'armor',
     bg: 0x021207, fog: [0x021207, 120, 380],
     build(ctx) {
       const { ROAD_HALF_W, Z_FAR } = ctx.C;
@@ -1619,6 +1629,7 @@ export const THEMES = {
   },
   observatory: {
     label: 'Packet Observatory',
+    fleet: 'lightcycles',
     bg: 0x04060c, fog: [0x04060c, 90, 300],
     build(ctx) {
       const { ROAD_HALF_W } = ctx.C;

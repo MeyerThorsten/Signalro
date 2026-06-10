@@ -128,6 +128,61 @@ function T(label, proto, slot, speed, boxes, glow, opts = {}) {
 
 const BOB = { bob: 0.14, bobF: 1.6 }; // gentle water bob
 
+// ---- Generators for the new themed fleets ----
+function wheels4(w, l, r = 0.55, color = DARK) {
+  const x = w / 2 - r * 0.3, z = l / 2 - r;
+  return [
+    [-x, r / 2, z, r * 0.5, r, r, color], [x, r / 2, z, r * 0.5, r, r, color],
+    [-x, r / 2, -z, r * 0.5, r, r, color], [x, r / 2, -z, r * 0.5, r, r, color],
+  ];
+}
+// TRON-style light cycle: dark slim body with the slot colour as glowing strips.
+function cycle(slot, len, speed, label, proto) {
+  const c = C[slot];
+  return T(label, proto, slot, speed, [
+    [0, 0.5, 0, 0.55, 0.4, len, DARK],
+    [0, 0.85, -len * 0.1, 0.46, 0.45, len * 0.34, 0x1a1f2e],
+  ], [
+    [0, 0.5, len / 2 - 0.2, 0.34, 0.22, 0.1, c],
+    [0, 0.5, -len / 2 + 0.2, 0.44, 0.3, 0.12, c],
+    [0, 0.16, len * 0.22, 0.5, 0.1, len * 0.3, c],
+    [0, 0.16, -len * 0.22, 0.5, 0.1, len * 0.3, c],
+    [0, 0.5, -len / 2 - 0.7, 0.3, 0.08, 1.3, c],
+  ], { y: 0.18, bob: 0.05, bobF: 2.4 });
+}
+// Mario-style go-kart: chunky body, big wheels, a driver.
+function kart(slot, len, speed, label, proto) {
+  const c = C[slot];
+  return T(label, proto, slot, speed, [
+    [0, 0.5, 0, 1.5, 0.5, len, c],
+    ...wheels4(1.8, len + 0.2, 0.6, DARK),
+    [0, 1.05, -len * 0.18, 0.6, 0.7, 0.6, 0xf0c9a0],
+    [0, 1.5, -len * 0.18, 0.55, 0.35, 0.6, c],
+    [0, 0.72, len * 0.4, 1.3, 0.3, 0.3, 0x1a1a1a],
+  ], [
+    [-0.45, 0.55, len / 2 - 0.05, 0.34, 0.18, 0.06, EYE], [0.45, 0.55, len / 2 - 0.05, 0.34, 0.18, 0.06, EYE],
+    [0, 0.6, -len / 2 + 0.05, 0.5, 0.2, 0.06, TAIL],
+  ]);
+}
+// Military unit: slot-coloured hull on dark tracks, optional turret.
+function armorUnit(slot, w, len, speed, label, proto, turret) {
+  const c = C[slot];
+  const boxes = [
+    [0, 0.9, 0, w, 0.9, len, c],
+    [-(w / 2 - 0.15), 0.4, 0, 0.4, 0.6, len + 0.4, DARK],
+    [(w / 2 - 0.15), 0.4, 0, 0.4, 0.6, len + 0.4, DARK],
+  ];
+  if (turret) {
+    boxes.push([0, 1.55, -len * 0.1, w * 0.6, 0.7, len * 0.45, c]);
+    boxes.push([0, 1.62, len * 0.32, 0.28, 0.28, len * 0.6, 0x2a2a2a]);
+  } else {
+    boxes.push([0, 1.5, -len * 0.12, w * 0.7, 0.7, len * 0.42, GLASS]);
+  }
+  return T(label, proto, slot, speed, boxes, [
+    [-w * 0.28, 0.95, len / 2 + 0.05, 0.4, 0.2, 0.06, EYE], [w * 0.28, 0.95, len / 2 + 0.05, 0.4, 0.2, 0.06, EYE],
+  ]);
+}
+
 export const FLEETS = {
   cars: VEHICLE_TYPES,
 
@@ -686,5 +741,41 @@ export const FLEETS = {
       b.push([0, 4.4, 2.0, 3.4, 0.6, 0.12, 0x6d28d9]);
       return b;
     })(), [[0, 1.0, 0.65, 0.6, 0.3, 0.08, 0xffb35e]], { y: 3.8, bob: 0.25, bobF: 0.6 }),
+  },
+
+  lightcycles: {
+    truck: cycle('truck', 5.4, 24, 'data hauler', 'HTTPS'),
+    sports: cycle('sports', 3.4, 50, 'light cycle', 'QUIC'),
+    van: cycle('van', 3.8, 28, 'transport pod', 'HTTP'),
+    car: cycle('car', 3.2, 34, 'cycle', 'TCP'),
+    moto: cycle('moto', 2.2, 48, 'mini cycle', 'DNS'),
+    buggy: cycle('buggy', 2.8, 38, 'runner', 'UDP'),
+    suv: cycle('suv', 3.6, 32, 'heavy cycle', 'SSH'),
+    ambulance: cycle('ambulance', 3.4, 38, 'medic pod', 'ICMP'),
+    bus: cycle('bus', 6.4, 22, 'transit pod', 'OTHER'),
+  },
+
+  karts: {
+    truck: kart('truck', 3.0, 21, 'cargo kart', 'HTTPS'),
+    sports: kart('sports', 2.2, 46, 'racing kart', 'QUIC'),
+    van: kart('van', 2.6, 28, 'box kart', 'HTTP'),
+    car: kart('car', 2.2, 32, 'go-kart', 'TCP'),
+    moto: kart('moto', 1.6, 44, 'mini kart', 'DNS'),
+    buggy: kart('buggy', 2.0, 36, 'buggy kart', 'UDP'),
+    suv: kart('suv', 2.4, 30, 'heavy kart', 'SSH'),
+    ambulance: kart('ambulance', 2.4, 38, 'medic kart', 'ICMP'),
+    bus: kart('bus', 3.6, 22, 'party kart', 'OTHER'),
+  },
+
+  armor: {
+    truck: armorUnit('truck', 2.6, 5.0, 20, 'battle tank', 'HTTPS', true),
+    sports: armorUnit('sports', 1.8, 3.6, 46, 'attack buggy', 'QUIC', false),
+    van: armorUnit('van', 2.2, 4.4, 26, 'APC', 'HTTP', false),
+    car: armorUnit('car', 2.0, 4.0, 32, 'recon jeep', 'TCP', false),
+    moto: armorUnit('moto', 1.2, 2.6, 48, 'scout bike', 'DNS', false),
+    buggy: armorUnit('buggy', 1.8, 3.4, 34, 'light buggy', 'UDP', false),
+    suv: armorUnit('suv', 2.2, 4.4, 30, 'armored SUV', 'SSH', false),
+    ambulance: armorUnit('ambulance', 2.2, 4.2, 34, 'field ambulance', 'ICMP', false),
+    bus: armorUnit('bus', 2.6, 6.0, 20, 'troop transport', 'OTHER', false),
   },
 };
