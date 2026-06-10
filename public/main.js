@@ -601,15 +601,33 @@ function generateDemoTraffic(dt) {
 // ---------------------------------------------------------------------------
 // WebSocket client
 // ---------------------------------------------------------------------------
+const params = new URLSearchParams(location.search);
+// On a static HTTPS host (e.g. a published demo) there's no capture server, so
+// start in demo mode immediately — the highway is lively on load. If a real
+// backend is present it switches us to LIVE on connect. Plain http:// (local
+// dev) keeps the original behaviour: try the WebSocket first.
+const hostedDemo = location.protocol === 'https:' && !params.has('live');
 const state = {
   capture: 'connecting',  // connecting | live | unavailable
-  demo: new URLSearchParams(location.search).has('demo'),
-  demoForced: new URLSearchParams(location.search).has('demo'),
+  demo: params.has('demo') || hostedDemo,
+  demoForced: params.has('demo'),
+  hosted: hostedDemo,
   paused: false,
 };
 
 function connect() {
-  const ws = new WebSocket(`ws://${location.host}`);
+  // Match the page protocol so an HTTPS host uses wss:// (a ws:// socket from an
+  // https page is blocked as mixed content and throws).
+  const scheme = location.protocol === 'https:' ? 'wss://' : 'ws://';
+  let ws;
+  try {
+    ws = new WebSocket(`${scheme}${location.host}`);
+  } catch (_) {
+    if (!state.demoForced) state.demo = true;
+    updateStatusUI({});
+    setTimeout(connect, 15000);
+    return;
+  }
   ws.onmessage = (ev) => {
     const msg = JSON.parse(ev.data);
     if (msg.type === 'status') {
@@ -629,7 +647,9 @@ function connect() {
       if (!state.demoForced) state.demo = true;
       updateStatusUI({});
     }
-    setTimeout(connect, 2500);
+    // Back off hard on a hosted demo (no server will ever appear); retry
+    // briskly during local dev so live capture connects fast.
+    setTimeout(connect, state.hosted ? 15000 : 2500);
   };
   ws.onerror = () => ws.close();
 }
@@ -653,7 +673,9 @@ function updateStatusUI(msg) {
     label.textContent = 'DEMO — simulated traffic';
     hint.textContent = state.capture === 'unavailable'
       ? 'live capture needs privileges: `sudo npm start`, or once: `sudo scripts/grant-bpf.sh`'
-      : (state.capture === 'connecting' ? 'server not reachable — reconnecting…' : 'demo forced on');
+      : state.hosted
+        ? 'live, simulated demo · run PacketRush locally to watch your real traffic'
+        : (state.capture === 'connecting' ? 'server not reachable — reconnecting…' : 'demo forced on');
   } else if (state.capture === 'live') {
     elStatus.className = 'live';
     label.textContent = `LIVE — capturing on ${msg.iface || 'en0'}`;

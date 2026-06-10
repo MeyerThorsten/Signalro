@@ -100,11 +100,19 @@ h1 .gr{background:linear-gradient(100deg,var(--cyan),#a8e6ff 40%,var(--amber)); 
 .btn-primary:hover{transform:translateY(-2px); box-shadow:0 12px 38px rgba(125,211,252,.42)}
 .btn-ghost{border-color:var(--line2); color:var(--text); background:rgba(255,255,255,.02)}
 .btn-ghost:hover{border-color:var(--cyan); background:rgba(125,211,252,.08)}
-.hero-shot{position:relative; margin-top:54px; border-radius:16px; overflow:hidden;
-  border:1px solid var(--line2); box-shadow:0 40px 100px rgba(0,0,0,.6), 0 0 0 1px rgba(125,211,252,.06);}
-.hero-shot img{display:block; width:100%}
+.hero-shot{display:block; position:relative; margin-top:54px; border-radius:16px; overflow:hidden; cursor:pointer;
+  border:1px solid var(--line2); box-shadow:0 40px 100px rgba(0,0,0,.6), 0 0 0 1px rgba(125,211,252,.06); transition:.3s}
+.hero-shot:hover{border-color:var(--cyan); box-shadow:0 40px 110px rgba(0,0,0,.6), 0 0 0 1px rgba(125,211,252,.3)}
+.hero-shot img{display:block; width:100%; transition:transform .5s ease, filter .3s}
+.hero-shot:hover img{transform:scale(1.03); filter:brightness(.78)}
+.hero-shot .shot-play{position:absolute; left:50%; top:50%; transform:translate(-50%,-50%) scale(.92);
+  font-family:"Chakra Petch"; font-weight:700; font-size:clamp(15px,2vw,20px); letter-spacing:.5px; color:#06121c;
+  background:var(--cyan); padding:14px 26px; border-radius:12px; box-shadow:0 12px 44px rgba(125,211,252,.5);
+  opacity:0; transition:.3s; pointer-events:none; white-space:nowrap}
+.hero-shot:hover .shot-play{opacity:1; transform:translate(-50%,-50%) scale(1)}
 .hero-shot .tag{position:absolute; left:16px; bottom:14px; font-family:"JetBrains Mono"; font-size:12px; color:var(--dim);
-  background:rgba(8,12,24,.7); border:1px solid var(--line); border-radius:7px; padding:5px 11px; backdrop-filter:blur(6px)}
+  background:rgba(8,12,24,.7); border:1px solid var(--line); border-radius:7px; padding:5px 11px; backdrop-filter:blur(6px); transition:.3s}
+.hero-shot:hover .tag{opacity:0}
 
 /* license-plate badge */
 .plate{display:inline-flex; align-items:center; gap:8px; font-size:13px; letter-spacing:2px;
@@ -235,6 +243,7 @@ img,svg{max-width:100%; height:auto}
   <div class="nav-in">
     <div class="brand"><span class="dot"></span>PACKETRUSH</div>
     <div class="nav-links">
+      <a href="https://flint-knoll-me7j.here.now/" target="_blank" rel="noopener" style="color:var(--cyan)">▶ Live demo</a>
       <a href="#read">How to read it</a>
       <a href="#arch">Architecture</a>
       <a href="#features">Features</a>
@@ -253,14 +262,15 @@ img,svg{max-width:100%; height:auto}
     <h1 class="reveal">Your network traffic<br>as a <span class="gr">night highway</span>.</h1>
     <p class="lede reveal">PacketRush captures your machine's packets in real time and drives them down a 3D motorway. <b>Every packet is a vehicle</b> — its type is the protocol, its size is the payload, its direction is inbound vs. outbound. A download becomes a convoy of trucks.</p>
     <div class="hero-cta reveal">
-      <a class="btn btn-primary" href="https://github.com/MeyerThorsten/PacketRush" target="_blank" rel="noopener">★ Star on GitHub</a>
-      <a class="btn btn-ghost" href="#start">Quick start →</a>
+      <a class="btn btn-primary" href="https://flint-knoll-me7j.here.now/" target="_blank" rel="noopener">▶ Launch live demo</a>
+      <a class="btn btn-ghost" href="https://github.com/MeyerThorsten/PacketRush" target="_blank" rel="noopener">★ Star on GitHub</a>
       <span class="plate" style="align-self:center">MIT · OPEN SOURCE</span>
     </div>
-    <figure class="hero-shot reveal">
+    <a class="hero-shot reveal" href="https://flint-knoll-me7j.here.now/" target="_blank" rel="noopener" aria-label="Launch the live PacketRush demo">
       <img src="images/night.png" alt="PacketRush running the default night highway theme" loading="eager">
-      <figcaption class="tag">theme: night · live HTTPS / QUIC / DNS traffic</figcaption>
-    </figure>
+      <span class="shot-play">▶ Launch interactive demo</span>
+      <span class="tag">no install · runs in your browser · 26 scenes</span>
+    </a>
 
     <div class="stats reveal">
       <div class="stat"><div class="stat-num" data-to="26">0</div><div class="stat-lab">Scenes</div></div>

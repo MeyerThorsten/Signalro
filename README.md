@@ -11,10 +11,15 @@ becomes a vehicle on a night highway.** Outbound packets drive away from you on
 the left carriageway; inbound packets come toward you on the right. Built with
 Three.js and a single Node dependency.
 
-📖 **[Live documentation site →](https://sunny-cottage-dd88.here.now)** &nbsp;·&nbsp;
-📋 **[Full reference (DOCUMENTATION.md) →](DOCUMENTATION.md)**
+▶️ **[Try the live demo →](https://flint-knoll-me7j.here.now)** &nbsp;·&nbsp;
+📖 **[Documentation site →](https://sunny-cottage-dd88.here.now)** &nbsp;·&nbsp;
+📋 **[Full reference →](DOCUMENTATION.md)**
 
-![PacketRush — the default night highway](docs/images/night.png)
+> The live demo runs entirely in your browser (no install, no capture server) —
+> it shows simulated traffic across all 26 scenes. Run PacketRush locally to
+> watch your machine's **real** packets.
+
+[![PacketRush — the default night highway (click to launch the live demo)](docs/images/night.png)](https://flint-knoll-me7j.here.now)
 
 | Protocol | Vehicle |
 | --- | --- |
