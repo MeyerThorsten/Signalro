@@ -371,14 +371,14 @@ function skiff(slot, len, speed, label, proto) {
     [0.02, 1.7, -len * 0.4, 0.06, 1.0, 1.4, 0xe8c8a0],
   ], [[0, 0.9, 0, 1.0, 0.06, len, c]], { y: 1.2, bob: 0.3, bobF: 1.2 });
 }
-// Monument Valley floating abstract shape.
+// Monument Valley floating abstract shape (glowing cap keeps glow non-empty).
 function abstractShape(slot, len, speed, label, proto) {
   const c = C[slot];
   return T(label, proto, slot, speed, [
     [0, 1.2, 0, 1.0, 1.0, 1.0, c],
     [0, 1.9, 0, 0.6, 0.6, 0.6, 0xf0e6d2],
     [0, 0.6, 0, 1.3, 0.2, 1.3, c],
-  ], [], { y: 0.6, bob: 0.3, bobF: 1.0 });
+  ], [[0, 2.45, 0, 0.32, 0.32, 0.32, c]], { y: 0.6, bob: 0.3, bobF: 1.0 });
 }
 // Borderlands cel buggy: roll cage + big knobby wheels + ink outlines.
 function celbuggy(slot, len, speed, label, proto) {
@@ -390,13 +390,13 @@ function celbuggy(slot, len, speed, label, proto) {
     ...wheels4(2.0, len, 0.7, 0x120a04),
   ], [[-0.5, 0.7, len / 2 + 0.05, 0.35, 0.18, 0.06, EYE], [0.5, 0.7, len / 2 + 0.05, 0.35, 0.18, 0.06, EYE]]);
 }
-// Mini Motorways: ultra-minimal rounded blob, no lights.
+// Mini Motorways: ultra-minimal rounded blob with a small headlight.
 function minimalCar(slot, len, speed, label, proto) {
   const c = C[slot];
   return T(label, proto, slot, speed, [
     [0, 0.5, 0, 1.2, 0.6, len, c],
     [0, 0.85, 0, 1.0, 0.3, len * 0.5, c],
-  ], []);
+  ], [[0, 0.5, len / 2 + 0.02, 0.32, 0.1, 0.05, EYE]]);
 }
 
 export const FLEETS = {
