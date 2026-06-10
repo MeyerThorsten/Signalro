@@ -6,7 +6,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { PROTO_TO_TYPE, buildVehicleMeshes } from './vehicles.js';
 import { FLEETS } from './fleets.js';
-import { THEMES, buildThemeEnvironment, disposeGroup } from './themes.js';
+import { THEMES, THEME_GROUPS, buildThemeEnvironment, disposeGroup } from './themes.js';
 import { createGlobe, CC_LATLNG } from './globe.js';
 
 // ---------------------------------------------------------------------------
@@ -83,11 +83,31 @@ function applyTheme(key) {
 }
 
 const themeSelect = document.getElementById('theme');
-for (const [key, t] of Object.entries(THEMES)) {
-  const opt = document.createElement('option');
-  opt.value = key;
-  opt.textContent = t.label;
-  themeSelect.appendChild(opt);
+const groupedKeys = new Set();
+for (const grp of THEME_GROUPS) {
+  const og = document.createElement('optgroup');
+  og.label = grp.label;
+  for (const key of grp.keys) {
+    if (!THEMES[key]) continue;
+    groupedKeys.add(key);
+    const opt = document.createElement('option');
+    opt.value = key;
+    opt.textContent = THEMES[key].label;
+    og.appendChild(opt);
+  }
+  themeSelect.appendChild(og);
+}
+// Any theme not placed in a group (safety net) goes under "More".
+const ungrouped = Object.keys(THEMES).filter((k) => !groupedKeys.has(k));
+if (ungrouped.length) {
+  const og = document.createElement('optgroup');
+  og.label = 'More';
+  for (const key of ungrouped) {
+    const opt = document.createElement('option');
+    opt.value = key; opt.textContent = THEMES[key].label;
+    og.appendChild(opt);
+  }
+  themeSelect.appendChild(og);
 }
 themeSelect.addEventListener('change', () => applyTheme(themeSelect.value));
 

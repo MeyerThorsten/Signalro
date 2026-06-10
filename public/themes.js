@@ -1584,15 +1584,25 @@ export const THEMES = {
   },
   citymap: {
     label: 'City Traffic Map',
-    bg: 0x1a2230, fog: [0x1a2230, 150, 460],
+    bg: 0x1a2230, fog: [0x1a2230, 150, 470],
     build(ctx) {
       const { ROAD_HALF_W, Z_FAR } = ctx.C;
-      addLights(ctx, { sky: 0xdde6f0, ground: 0x2a3340, hemi: 2.2, sun: 0xffffff, sunInt: 0.7, sunPos: [30, 90, 20] });
+      addLights(ctx, { sky: 0xdde6f0, ground: 0x2a3340, hemi: 2.3, sun: 0xffffff, sunInt: 0.7, sunPos: [30, 90, 20] });
       addGround(ctx, 0x222b38);
       addRoad(ctx, { asphalt: 0x39424f, dash: 0xf0d24a, edge: 0xe8eef4, median: 0x4a5460, rail: 0x303a46 });
+      // gridded district buildings in node colours, with lit rooftops
       const cols = [0x4a9ed8, 0x4ad88a, 0xe85a5a, 0xe8b84a, 0x9a6ad8];
-      for (let i = 0; i < 50; i++) { const s = ctx.rng() < 0.5 ? -1 : 1; const w = 4 + ctx.rng() * 6; box(ctx, w, 3 + ctx.rng() * 6, w, cols[Math.floor(ctx.rng() * cols.length)], s * (ROAD_HALF_W + 6 + ctx.rng() * 80), 2, Z_FAR + ctx.rng() * 300); }
-      for (let z = Z_FAR; z < 60; z += 40) box(ctx, 200, 0.05, 2, 0x4a5460, 0, 0.03, z);
+      for (let i = 0; i < 64; i++) {
+        const s = ctx.rng() < 0.5 ? -1 : 1;
+        const x = s * (ROAD_HALF_W + 8 + Math.floor(ctx.rng() * 8) * 11);
+        const z = Z_FAR + Math.floor(ctx.rng() * 30) * 11;
+        const h = 4 + ctx.rng() * 11, col = cols[Math.floor(ctx.rng() * cols.length)];
+        box(ctx, 5, h, 5, col, x, h / 2, z);
+        box(ctx, 4.4, 0.3, 4.4, 0xffffff, x, h + 0.2, z, 0, true);
+      }
+      // street grid on the ground (cross + parallel)
+      for (let z = Z_FAR; z < 60; z += 28) box(ctx, 240, 0.04, 1.4, 0x4a5460, 0, 0.03, z);
+      for (let x = -110; x <= 110; x += 28) box(ctx, 1.4, 0.04, 320, 0x4a5460, x, 0.03, -70);
     },
   },
   motorways: {
@@ -1693,15 +1703,29 @@ export const THEMES = {
   },
   borderlands: {
     label: 'Cel Wastes',
-    bg: 0xc88a4a, fog: [0xc88a4a, 90, 300],
+    bg: 0xe8943a, fog: [0xe8943a, 110, 340],
     build(ctx) {
       const { ROAD_HALF_W, Z_FAR } = ctx.C;
-      addLights(ctx, { sky: 0xffc87a, ground: 0x6a4a28, hemi: 1.8, sun: 0xffb060, sunInt: 1.2, sunPos: [20, 50, -40] });
-      addGround(ctx, 0xb87a3a);
-      addRoad(ctx, { asphalt: 0x5a4632, dash: 0xf0c060, edge: 0x1a1208, median: null, rail: 0x1a1208 });
-      for (let i = 0; i < 14; i++) addMesa(ctx, (ctx.rng() < 0.5 ? -1 : 1) * (45 + ctx.rng() * 110), Z_FAR + ctx.rng() * 280, 0.9 + ctx.rng() * 1.2, 0x9a5a2a);
-      for (let i = 0; i < 12; i++) { const s = ctx.rng() < 0.5 ? -1 : 1; box(ctx, 4, 4 + ctx.rng() * 5, 4, 0x4a3a28, s * (ROAD_HALF_W + 6 + ctx.rng() * 40), 3, Z_FAR + ctx.rng() * 260); }
-      addSkyDisc(ctx, { color: 0xffe0a0, r: 16, x: 30, y: 50, z: -270, glowColor: 0xffae5a });
+      addLights(ctx, { sky: 0xffd07a, ground: 0x5a3a1a, hemi: 1.9, sun: 0xffae40, sunInt: 1.3, sunPos: [20, 55, -50] });
+      addGround(ctx, 0xc06a28);
+      addRoad(ctx, { asphalt: 0x33241a, dash: 0xffd24a, edge: 0x120a04, median: null, rail: 0x120a04 });
+      // chunky scrap towers framed in heavy black ink outlines (comic look),
+      // with bold accent panels — distinct from the smooth desert mesas.
+      const accents = [0xe8473a, 0x3a9ad8, 0xf0c020, 0x6ac04a];
+      for (let i = 0; i < 18; i++) {
+        const s = ctx.rng() < 0.5 ? -1 : 1;
+        const x = s * (ROAD_HALF_W + 8 + ctx.rng() * 50), z = Z_FAR + ctx.rng() * 280;
+        const h = 5 + ctx.rng() * 9, w = 4 + ctx.rng() * 3;
+        box(ctx, w + 0.7, h + 0.7, w + 0.7, 0x120a04, x, h / 2, z);       // black outline shell
+        box(ctx, w, h, w, ctx.rng() < 0.4 ? accents[Math.floor(ctx.rng() * 4)] : 0x8a5630, x, h / 2, z);
+        box(ctx, w * 0.45, 1.6, w * 0.45, 0x120a04, x, h + 0.8, z);       // rooftop tank
+      }
+      for (let i = 0; i < 8; i++) {
+        const s = ctx.rng() < 0.5 ? -1 : 1, x = s * (45 + ctx.rng() * 90), z = Z_FAR + ctx.rng() * 260, hh = 10 + ctx.rng() * 16;
+        const cone = new THREE.Mesh(new THREE.ConeGeometry(6, hh, 5), mat(0x7a3a18));
+        cone.position.set(x, hh / 2 - 1, z); ctx.g.add(cone);
+      }
+      addSkyDisc(ctx, { color: 0xfff0b0, r: 16, x: 40, y: 50, z: -270, glowColor: 0xffae40 });
     },
   },
   monument: {
@@ -1732,6 +1756,15 @@ export const THEMES = {
     },
   },
 };
+
+// Ordered groups for the theme dropdown (keeps a 52-item list navigable).
+export const THEME_GROUPS = [
+  { label: 'Highway & Nature', keys: ['night', 'hawaii', 'autobahn', 'bigcity', 'rome', 'west', 'snow', 'jungle', 'mars', 'shire', 'gotham', 'neon', 'grid', 'fury'] },
+  { label: 'Creatures & Fleets', keys: ['ocean', 'reef', 'sky', 'rails', 'savanna', 'arctic', 'dino', 'magic', 'christmas', 'depths', 'skyfair', 'space'] },
+  { label: 'Game Worlds', keys: ['voxel', 'witcher', 'halo', 'fallout', 'battlefield', 'nightcity', 'crystal', 'velvet', 'mirrorsedge', 'deusex', 'mario'] },
+  { label: 'Sci-Fi & Tactical', keys: ['antigrav', 'trench', 'tron', 'radar', 'citymap', 'motorways', 'observatory'] },
+  { label: 'Art Styles', keys: ['limbo', 'cuphead', 'okami', 'journey', 'windwaker', 'borderlands', 'monument', 'hallownest'] },
+];
 
 // ---------------------------------------------------------------------------
 export function buildThemeEnvironment(key, C) {
